@@ -262,6 +262,7 @@ module Rake
     end
 
     def add_comment(comment)
+      return if comment.nil?
       @comments << comment unless @comments.include?(comment)
     end
     private :add_comment
