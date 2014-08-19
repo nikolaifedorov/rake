@@ -1,10 +1,13 @@
 require 'rbconfig'
 
+# TODO: replace with IO.popen using array-style arguments in Rake 11
+require 'open3'
+
 module Rake
 
   # Based on a script at:
   #   http://stackoverflow.com/questions/891537/ruby-detect-number-of-cpus-installed
-  class CpuCounter
+  class CpuCounter # :nodoc: all
     def self.count
       new.count_with_default
     end
@@ -26,7 +29,7 @@ module Rake
           count_via_hwprefs_thread_count || count_via_sysctl
         when /linux/
           count_via_cpuinfo
-        when /freebsd/
+        when /bsd/
           count_via_sysctl
         when /mswin|mingw/
           count_via_win32
@@ -35,7 +38,8 @@ module Rake
           count_via_win32 ||
             count_via_sysctl ||
             count_via_hwprefs_thread_count ||
-            count_via_hwprefs_cpu_count
+            count_via_hwprefs_cpu_count ||
+            count_via_cpuinfo
         end
       end
     end
@@ -51,7 +55,7 @@ module Rake
       wmi = WIN32OLE.connect("winmgmts://")
       cpu = wmi.ExecQuery("select NumberOfCores from Win32_Processor") # TODO count hyper-threaded in this
       cpu.to_enum.first.NumberOfCores
-    rescue StandardError
+    rescue StandardError, LoadError
       nil
     end
 
@@ -70,13 +74,17 @@ module Rake
     end
 
     def count_via_sysctl
-      run 'sysctl', '-n hw.ncpu'
+      run 'sysctl', '-n', 'hw.ncpu'
     end
 
-    def run(command, args)
+    def run(command, *args)
       cmd = resolve_command(command)
       if cmd
-        `#{cmd} #{args}`.to_i
+        Open3.popen3 cmd, *args do |inn, out, err,|
+          inn.close
+          err.read
+          out.read.to_i
+        end
       else
         nil
       end
@@ -94,7 +102,9 @@ module Rake
     end
 
     def in_path_command(command)
-      `which #{command}` != '' ? command : nil
+      Open3.popen3 'which', command do |_, out,|
+        out.eof? ? nil : command
+      end
     end
   end
 end

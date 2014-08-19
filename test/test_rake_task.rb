@@ -13,6 +13,7 @@ class TestRakeTask < Rake::TestCase
 
   def teardown
     Rake::TaskManager.record_task_metadata = false
+    Rake.application.thread_pool.join
 
     super
   end
@@ -270,7 +271,7 @@ class TestRakeTask < Rake::TestCase
     result = []
 
     t_a = task(:a) do |t|
-      sleep 0.02
+      sleep 0.2
       mx.synchronize { result << t.name }
     end
 
@@ -383,5 +384,10 @@ class TestRakeTask < Rake::TestCase
     desc "line one"
     task(:t)
     assert_equal "line one / line two", t.comment
+  end
+
+  def test_source_is_first_prerequisite
+    t = task :t => ["preqA", "preqB"]
+    assert_equal "preqA", t.source
   end
 end

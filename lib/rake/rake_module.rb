@@ -2,8 +2,6 @@ require 'rake/application'
 
 module Rake
 
-  # Rake module singleton methods.
-  #
   class << self
     # Current Rake Application
     def application
@@ -15,7 +13,7 @@ module Rake
       @application = app
     end
 
-    def suggested_thread_count
+    def suggested_thread_count # :nodoc:
       @cpu_count ||= Rake::CpuCounter.count
       @cpu_count + 4
     end
@@ -33,9 +31,7 @@ module Rake
     # Add files to the rakelib list
     def add_rakelib(*files)
       application.options.rakelib ||= []
-      files.each do |file|
-        application.options.rakelib << file
-      end
+      application.options.rakelib.concat(files)
     end
   end
 

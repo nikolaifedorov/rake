@@ -1,4 +1,4 @@
-= Rakefile Format (as of version 0.8.7)
+= Rakefile Format
 
 First of all, there is no special format for a Rakefile.  A Rakefile
 contains executable Ruby code.  Anything legal in a ruby script is
@@ -30,9 +30,9 @@ parameter that is the name of the task.
 Any prerequisites are given as a list (enclosed in square brackets)
 following the name and an arrow (=>).
 
-  task :name => [:prereq1, :prereq2]
+  task name: [:prereq1, :prereq2]
 
-<b>NOTE:</b> Although this syntax looks a little funky, it is legal
+*NOTE:* Although this syntax looks a little funky, it is legal
 Ruby.  We are constructing a hash where the key is :name and the value
 for that key is the list of prerequisites.  It is equivalent to the
 following ...
@@ -41,13 +41,27 @@ following ...
   hash[:name] = [:prereq1, :prereq2]
   task(hash)
 
+You can also use strings for task names and prerequisites, rake doesn't care.
+This is the same task definition:
+
+  task 'name' => %w[prereq1 prereq2]
+
+As is this:
+
+  task name: %w[prereq1 prereq2]
+
+We'll prefer this style for regular tasks with prerequisites throughout the
+rest of the document.  Using an array of strings for the prerequisites means
+you will need to make fewer changes if you need to move tasks into namespaces
+or perform other refactorings.
+
 === Tasks with Actions
 
 Actions are defined by passing a block to the +task+ method.  Any Ruby
 code can be placed in the block.  The block may reference the task
 object via the block parameter.
 
-  task :name => [:prereq1, :prereq2] do |t|
+  task name: [:prereq1, :prereq2] do |t|
     # actions (may reference t)
   end
 
@@ -62,8 +76,8 @@ For example, the following is equivalent to the single task
 specification given above.
 
   task :name
-  task :name => [:prereq1]
-  task :name => [:prereq2]
+  task name: :prereq1
+  task name: %w[prereq2]
   task :name do |t|
     # actions
   end
@@ -79,8 +93,8 @@ method).  In addition, file tasks are usually named with a string
 rather than a symbol.
 
 The following file task creates a executable program (named +prog+)
-given two object files named <tt>a.o</tt> and <tt>b.o</tt>.  The tasks
-for creating <tt>a.o</tt> and <tt>b.o</tt> are not shown.
+given two object files named +a.o+ and +b.o+.  The tasks
+for creating +a.o+ and +b.o+ are not shown.
 
   file "prog" => ["a.o", "b.o"] do |t|
     sh "cc -o #{t.name} #{t.prerequisites.join(' ')}"
@@ -97,9 +111,9 @@ that creates the directory.  For example, the following declaration
 
 is equivalent to ...
 
-  file "testdata"              do |t| mkdir t.name end
-  file "testdata/examples"     do |t| mkdir t.name end
-  file "testdata/examples/doc" do |t| mkdir t.name end
+  file "testdata" do |t| mkdir t.name end
+  file "testdata/examples" => ["testdata"] do |t| mkdir t.name end
+  file "testdata/examples/doc" => ["testdata/examples"] do |t| mkdir t.name end
 
 The +directory+ method does not accept prerequisites or actions, but
 both prerequisites and actions can be added later.  For example ...
@@ -114,7 +128,7 @@ both prerequisites and actions can be added later.  For example ...
 
 Rake allows parallel execution of prerequisites using the following syntax:
 
-  multitask :copy_files => [:copy_src, :copy_doc, :copy_bin] do
+  multitask copy_files: %w[copy_src copy_doc copy_bin] do
     puts "All Copies Complete"
   end
 
@@ -133,9 +147,9 @@ until the common prerequisites have been run.
 For example, if the <tt>copy_<em>xxx</em></tt> tasks have the
 following prerequisites:
 
-  task :copy_src => [:prep_for_copy]
-  task :copy_bin => [:prep_for_copy]
-  task :copy_doc => [:prep_for_copy]
+  task copy_src: :prep_for_copy
+  task copy_bin: :prep_for_copy
+  task copy_doc: :prep_for_copy
 
 Then the +prep_for_copy+ task is run before starting all the copies in
 parallel.  Once +prep_for_copy+ is complete, +copy_src+, +copy_bin+,
@@ -175,7 +189,7 @@ arguments can be passed by separating them with a comma, for example:
 
 Just a few words of caution.  The rake task name and its arguments
 need to be a single command line argument to rake.  This generally
-means no spaces.  If spaces are needed, then the entire rake +
+means no spaces.  If spaces are needed, then the entire name +
 argument string should be quoted.  Something like this:
 
    rake "name[billy bob, smith]"
@@ -183,7 +197,7 @@ argument string should be quoted.  Something like this:
 (Quoting rules vary between operating systems and shells, so make sure
 you consult the proper docs for your OS/shell).
 
-=== Tasks Arguments and the Environment
+=== Task Arguments and the Environment
 
 Task argument values can also be picked up from the environment.  For
 example, if the "release" task expected a parameter named
@@ -203,7 +217,7 @@ will work.  Environment variable names must either match the task
 parameter exactly, or match an all-uppercase version of the task
 parameter.
 
-<b>NOTE:</b> A variable declared within a rake command will
+*NOTE:* A variable declared within a rake command will
 not persist in the environment:
 
    $ export VALUE=old
@@ -294,8 +308,7 @@ versions of rake.
 == Accessing Task Programmatically
 
 Sometimes it is useful to manipulate tasks programmatically in a
-Rakefile. To find a task object, use the <tt>:[]</tt> operator on the
-<tt>Rake::Task</tt>.
+Rakefile. To find a task object use Rake::Task.[].
 
 === Programmatic Task Example
 
@@ -364,7 +377,7 @@ The following rule is equivalent to the example above.
     sh "cc #{t.source} -c -o #{t.name}"
   end
 
-<b>NOTE:</b> Because of a _quirk_ in Ruby syntax, parenthesis are
+*NOTE:* Because of a _quirk_ in Ruby syntax, parenthesis are
 required on *rule* when the first argument is a regular expression.
 
 The following rule might be used for Java files ...
@@ -375,7 +388,7 @@ The following rule might be used for Java files ...
     java_compile(t.source, t.name)
   end
 
-<b>NOTE:</b> +java_compile+ is a hypothetical method that invokes the
+*NOTE:* +java_compile+ is a hypothetical method that invokes the
 java compiler.
 
 == Importing Dependencies
@@ -397,7 +410,7 @@ explicit task, that task is invoked before loading the file. This
 allows dependency files to be generated and used in a single rake
 command invocation.
 
-=== Example:
+Example:
 
   require 'rake/loaders/makefile'
 
@@ -418,10 +431,10 @@ legal in Ruby source code, including comments for tasks and rules.
 However, if you wish a task to be described using the "-T" switch,
 then you need to use the +desc+ command to describe the task.
 
-=== Example:
+Example:
 
   desc "Create a distribution package"
-  task :package => [ ... ] do ... end
+  task package: %w[ ... ] do ... end
 
 The "-T" switch (or "--tasks" if you like to spell things out) will
 display a list of tasks that have a description.  If you use +desc+ to
@@ -453,8 +466,7 @@ common for task names to begin to clash.  For example, if you might
 have a main program and a set of sample programs built by a single
 Rakefile.  By placing the tasks related to the main program in one
 namespace, and the tasks for building the sample programs in a
-different namespace, the task names will not will not interfere with
-each other.
+different namespace, the task names will not interfere with each other.
 
 For example:
 
@@ -470,12 +482,12 @@ For example:
     end
   end
 
-  task :build => ["main:build", "samples:build"]
+  task build: %w[main:build samples:build]
 
 Referencing a task in a separate namespace can be achieved by
 prefixing the task name with the namespace and a colon
 (e.g. "main:build" refers to the :build task in the +main+ namespace).
-Nested namespaces are supported, so
+Nested namespaces are supported.
 
 Note that the name given in the +task+ command is always the unadorned
 task name without any namespace prefixes.  The +task+ command always
@@ -579,11 +591,11 @@ This is the proper way to specify the task ...
 
 == Rakefile Path
 
-When issuing the <tt>rake</tt> command in a terminal, Rake will look
+When issuing the +rake+ command in a terminal, Rake will look
 for a Rakefile in the current directory. If a Rakefile  is not found,
 it will search parent directories until one is found.
 
-For example, if a Rakefile resides in the <tt>project/</tt> directory,
+For example, if a Rakefile resides in the +project/+ directory,
 moving deeper into the project's directory tree will not have an adverse
 effect on rake tasks:
 
@@ -603,12 +615,36 @@ which the Rakefile resides.
 === Multiple Rake Files
 
 Not all tasks need to be included in a single Rakefile. Additional
-rake files (with the file extension "<tt>.rake</tt>") may be placed in
-<tt>rakelib</tt> directory located at the top level of a project (i.e.
-the same directory that contains the main <tt>Rakefile</tt>).
+rake files (with the file extension "+.rake+") may be placed in
++rakelib+ directory located at the top level of a project (i.e.
+the same directory that contains the main +Rakefile+).
 
 Also, rails projects may include additional rake files in the
-<tt>lib/tasks</tt> directory.
++lib/tasks+ directory.
+
+=== Clean and Clobber Tasks
+
+Through <tt>require 'rake/clean'</tt> Rake provides +clean+ and +clobber+
+tasks:
+
++clean+ ::
+  Clean up the project by deleting scratch files and backup files.  Add files
+  to the +CLEAN+ FileList to have the +clean+ target handle them.
+
++clobber+ ::
+  Clobber all generated and non-source files in a project.  The task depends
+  on +clean+, so all the +CLEAN+ files will be deleted as well as files in the
+  +CLOBBER+ FileList.  The intent of this task is to return a project to its
+  pristine, just unpacked state.
+
+You can add file names or glob patterns to both the +CLEAN+ and +CLOBBER+
+lists.
+
+=== Phony Task
+
+The phony task can be used as a dependency to allow file-based tasks to use
+non-file-based-tasks as prerequisites without forcing them to rebuild.  You
+can <tt>require 'rake/phony'</tt> to add the +phony+ task.
 
 ----
 
